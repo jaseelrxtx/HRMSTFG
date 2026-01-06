@@ -36,22 +36,29 @@ export interface LeaveHistoryItem {
   } | null;
 }
 
-export function useLeaveHistory(filters?: {
-  year?: number;
-  status?: string;
-  departmentId?: string;
-  employeeId?: string;
-}) {
+export function useLeaveHistory(
+  filters?: {
+    year?: number;
+    status?: any;
+    departmentId?: string;
+    employeeId?: string;
+  },
+  page: number = 1,
+  pageSize: number = 10
+) {
+
   const { role } = useAuth();
   const { data: employee } = useEmployee();
 
-  return useQuery({
-    queryKey: ["leave-history", role, employee?.id, filters],
-    queryFn: async (): Promise<LeaveHistoryItem[]> => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
 
-      // First get the user's role
+  return useQuery({
+    queryKey: ["leave-history", role, employee?.id, filters, page, pageSize],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { data: [], count: 0 };
+
       const { data: userRole } = await supabase
         .from("user_roles")
         .select("role")
@@ -60,10 +67,10 @@ export function useLeaveHistory(filters?: {
 
       const currentRole = userRole?.role;
 
-      // Build the query
       let query = supabase
         .from("leave_applications")
-        .select(`
+        .select(
+          `
           id,
           employee_id,
           leave_type_id,
@@ -75,85 +82,82 @@ export function useLeaveHistory(filters?: {
           is_lop,
           lop_days,
           created_at,
-          updated_at,
           leave_types (
             id,
             name,
             code
           ),
-          employees!leave_applications_employee_id_fkey (
+          employees (
             id,
             employee_id,
             department_id,
-            departments (
-              id,
-              name
-            ),
-            profiles:profiles!employees_user_id_profiles_fkey (
+            departments (id, name),
+            profiles (
               first_name,
               last_name
             )
           )
-        `)
+        `,
+          { count: "exact" } // 🔥 IMPORTANT
+        )
         .order("created_at", { ascending: false });
 
-      // Apply role-based filtering
-      if (currentRole === "admin" || currentRole === "hr") {
-        // Admin/HR can see all leave history - no additional filter
-      } else if (currentRole === "manager") {
-        // Managers see their own + their team members' leave history
-        if (!employee) return [];
+      /* ---------- role filters (unchanged) ---------- */
+      if (currentRole === "manager") {
+        if (!employee) return { data: [], count: 0 };
 
-        // Get team member IDs
-        const { data: teamMembers } = await supabase
+        const { data: team } = await supabase
           .from("employees")
           .select("id")
           .eq("reporting_manager_id", employee.id)
           .eq("is_active", true);
 
-        const teamMemberIds = teamMembers?.map(e => e.id) || [];
-        // Include manager's own ID
-        const allIds = [employee.id, ...teamMemberIds];
-
-        query = query.in("employee_id", allIds);
-      } else {
-        // Team members only see their own history
-        if (!employee) return [];
+        const ids = [employee.id, ...(team?.map(e => e.id) || [])];
+        query = query.in("employee_id", ids);
+      } else if (currentRole !== "admin" && currentRole !== "hr") {
+        if (!employee) return { data: [], count: 0 };
         query = query.eq("employee_id", employee.id);
       }
 
-      // Apply optional filters
+      /* ---------- optional filters ---------- */
       if (filters?.year) {
-        const startOfYear = `${filters.year}-01-01`;
-        const endOfYear = `${filters.year}-12-31`;
-        query = query.gte("start_date", startOfYear).lte("start_date", endOfYear);
+        query = query
+          .gte("start_date", `${filters.year}-01-01`)
+          .lte("start_date", `${filters.year}-12-31`);
       }
 
       if (filters?.status && filters.status !== "all") {
-        query = query.eq("status", filters.status as "pending" | "approved" | "rejected" | "cancelled");
+        query = query.eq("status", filters.status);
       }
 
       if (filters?.departmentId && filters.departmentId !== "all") {
-        // Need to filter by department through the employees table
         const { data: deptEmployees } = await supabase
           .from("employees")
           .select("id")
           .eq("department_id", filters.departmentId);
 
-        if (deptEmployees) {
-          query = query.in("employee_id", deptEmployees.map(e => e.id));
-        }
+        query = query.in(
+          "employee_id",
+          deptEmployees?.map(e => e.id) || []
+        );
       }
 
       if (filters?.employeeId && filters.employeeId !== "all") {
         query = query.eq("employee_id", filters.employeeId);
       }
 
-      const { data, error } = await query;
+      /* ---------- pagination ---------- */
+      const { data, count, error } = await query.range(from, to);
+
       if (error) throw error;
 
-      return data as unknown as LeaveHistoryItem[];
+      return {
+        data: data as LeaveHistoryItem[],
+        count: count || 0,
+      };
     },
     enabled: !!role,
+    // keepPreviousData: true, // 🔥 smooth page switch
   });
+
 }

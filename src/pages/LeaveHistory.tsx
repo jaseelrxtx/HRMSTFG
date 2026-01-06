@@ -44,11 +44,22 @@ export default function LeaveHistory() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
 
-  const { data: leaveHistory, isLoading } = useLeaveHistory({
-    year: selectedYear,
-    status: selectedStatus,
-    departmentId: selectedDepartment,
-  });
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  const { data, isLoading } = useLeaveHistory(
+    {
+      year: selectedYear,
+      status: selectedStatus,
+      departmentId: selectedDepartment,
+    },
+    page,
+    pageSize
+  );
+
+  const leaveHistory = data?.data || [];
+  const totalPages = Math.ceil((data?.count || 0) / pageSize);
+
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -299,6 +310,28 @@ export default function LeaveHistory() {
                     })}
                   </TableBody>
                 </Table>
+                <div className="flex justify-end gap-2 mt-4">
+                  <span className="text-sm text-muted-foreground px-2 flex items-center">
+                    Page {page} of {totalPages}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={page === 1}
+                    onClick={() => setPage(p => p - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={page === totalPages}
+                    onClick={() => setPage(p => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+
               </div>
             )}
           </CardContent>

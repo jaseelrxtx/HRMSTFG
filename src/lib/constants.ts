@@ -115,6 +115,9 @@ export const getNavigationItems = (role: AppRole) => {
   
   // Leave History - available to all roles
   items.push({ label: "Leave History", path: "/leave-history", icon: "History" });
+
+  // items.push({ label: "Leave Management", path: "/calendar", icon: "CalendarDays" });
+
   
   // Holidays - available to all roles (read-only for non-admin/HR)
   items.push({ label: "Holidays", path: "/holidays", icon: "CalendarPlus" });

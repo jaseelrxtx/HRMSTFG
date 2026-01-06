@@ -1,5 +1,7 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
+// @ts-ignore
 import { Resend } from "https://esm.sh/resend@2.0.0";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -204,7 +206,7 @@ Deno.serve(async (req) => {
           );
         }
 
-        const existingUser = existingUsers.users.find(u => u.email === email);
+        const existingUser = existingUsers.users.find((u: { email: any; }) => u.email === email);
         
         if (!existingUser) {
           return new Response(
