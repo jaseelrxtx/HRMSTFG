@@ -6,7 +6,8 @@ import { DepartmentManagement } from "@/components/settings/DepartmentManagement
 import { PolicyDocuments } from "@/components/settings/PolicyDocuments";
 import { AnnouncementSettings } from "@/components/settings/AnnouncementSettings";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Building2, Bell, FileText, FolderKanban, FileCheck, Megaphone } from "lucide-react";
+import { Building2, Bell, FileText, FolderKanban, FileCheck, Megaphone, Mail } from "lucide-react";
+import EmailSetup from "@/components/settings/MailSetup";
 
 export default function Settings() {
   return (
@@ -45,6 +46,10 @@ export default function Settings() {
             <FileText className="h-4 w-4" />
             <span className="hidden sm:inline">Audit Log</span>
           </TabsTrigger>
+          {/* <TabsTrigger value="email" className="gap-2">
+            <Mail className="h-4 w-4" />
+            <span className="hidden sm:inline">Email Setup</span>
+          </TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="organization">
@@ -70,6 +75,10 @@ export default function Settings() {
         <TabsContent value="audit">
           <AuditLogViewer />
         </TabsContent>
+
+        {/* <TabsContent value="email">
+          <EmailSetup />
+        </TabsContent> */}
       </Tabs>
     </div>
     </AppLayout>

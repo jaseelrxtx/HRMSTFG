@@ -9,6 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -88,6 +95,7 @@ export default function LeavePolicies() {
       advance_notice_days: leaveType.advance_notice_days,
       max_days_per_month: leaveType.max_days_per_month,
       max_days_per_year: leaveType.max_days_per_year,
+      gender_specific: leaveType.gender_specific,
     });
   };
 
@@ -240,23 +248,52 @@ export default function LeavePolicies() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {leaveType.gender_specific && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {leaveType.gender_specific}
-                                </Badge>
-                              )}
-                              {leaveType.post_probation_only && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Post-probation
-                                </Badge>
-                              )}
-                              {leaveType.medical_proof_required_after_days && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Medical proof &gt;{leaveType.medical_proof_required_after_days}d
-                                </Badge>
-                              )}
-                            </div>
+                            {isEditing ? (
+                              <div className="space-y-2">
+                                <Select
+                                  value={editValues.gender_specific ?? "none"}
+                                  onValueChange={(value) =>
+                                    setEditValues((prev) => ({
+                                      ...prev,
+                                      gender_specific: value === "none" ? null : (value as any),
+                                    }))
+                                  }
+                                >
+                                  <SelectTrigger className="w-[110px] h-8">
+                                    <SelectValue placeholder="Gender" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="male">Male</SelectItem>
+                                    <SelectItem value="female">Female</SelectItem>
+                                    <SelectItem value="none">Both</SelectItem>
+                                  </SelectContent>
+                                </Select>
+
+                                {leaveType.post_probation_only && (
+                                  <Badge variant="secondary" className="text-xs opacity-50">
+                                    Post-probation
+                                  </Badge>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {leaveType.gender_specific && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {leaveType.gender_specific}
+                                  </Badge>
+                                )}
+                                {/* {leaveType.post_probation_only && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Post-probation
+                                  </Badge>
+                                )}
+                                {leaveType.medical_proof_required_after_days && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Medical proof &gt;{leaveType.medical_proof_required_after_days}d
+                                  </Badge>
+                                )} */}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             {isEditing ? (
