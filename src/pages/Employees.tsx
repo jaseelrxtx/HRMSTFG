@@ -260,8 +260,11 @@ export default function Employees() {
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem>
-                                  <Calendar className="mr-2 h-4 w-4" />
-                                  View Leaves
+                                  {/* <Link to={`/leave-management?employee_id=${employee.id}`}> */}
+                                  <Link className="flex" to={`/leave-management`}>
+                                    <Calendar className="mr-2 h-4 w-4" />
+                                    View Leaves
+                                  </Link>
                                 </DropdownMenuItem>
                                 {canManageRoles && (
                                   <>
