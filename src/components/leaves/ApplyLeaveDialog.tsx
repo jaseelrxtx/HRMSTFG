@@ -197,7 +197,11 @@ export function ApplyLeaveDialog({ open, onOpenChange }: ApplyLeaveDialogProps) 
                         setEndDate(date);
                       }
                     }}
-                    disabled={(date) => date < new Date()}
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0); // reset time
+                      return date < today;
+                    }}
                     initialFocus
                     className="pointer-events-auto"
                   />
@@ -225,7 +229,11 @@ export function ApplyLeaveDialog({ open, onOpenChange }: ApplyLeaveDialogProps) 
                     mode="single"
                     selected={endDate}
                     onSelect={setEndDate}
-                    disabled={(date) => date < (startDate || new Date())}
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0); // reset time
+                      return date < today;
+                    }}
                     initialFocus
                     className="pointer-events-auto"
                   />
