@@ -1,3 +1,4 @@
+// ... imports
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -22,20 +23,32 @@ const loginSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
+const signupSchema = z.object({
+  firstName: z.string().min(2, "First name is required"),
+  lastName: z.string().min(2, "Last name is required"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
 const forgotPasswordSchema = z.object({
   email: z.string().email("Invalid email address"),
 });
 
 export default function Auth() {
-  const { user, signIn, resetPassword } = useAuth();
+  const { user, signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isLogin, setIsLogin] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Login form state
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  
+  // Signup form state additions
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
 
   // Forgot password dialog
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
@@ -48,32 +61,63 @@ export default function Auth() {
     }
   }, [user, navigate]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
 
-    const result = loginSchema.safeParse({ email: loginEmail, password: loginPassword });
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.errors.forEach((err) => {
-        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
-      });
-      setErrors(fieldErrors);
-      return;
-    }
+    if (isLogin) {
+      const result = loginSchema.safeParse({ email, password });
+      if (!result.success) {
+        const fieldErrors: Record<string, string> = {};
+        result.error.errors.forEach((err) => {
+          if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+        });
+        setErrors(fieldErrors);
+        return;
+      }
 
-    setIsLoading(true);
-    const { error } = await signIn(loginEmail, loginPassword);
-    setIsLoading(false);
+      setIsLoading(true);
+      const { error } = await signIn(email, password);
+      setIsLoading(false);
 
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Login failed",
-        description: error.message === "Invalid login credentials" 
-          ? "Invalid email or password. Please try again."
-          : error.message,
-      });
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Login failed",
+          description: error.message === "Invalid login credentials" 
+            ? "Invalid email or password. Please try again."
+            : error.message,
+        });
+      }
+    } else {
+      // Signup Logic
+      const result = signupSchema.safeParse({ firstName, lastName, email, password });
+      if (!result.success) {
+        const fieldErrors: Record<string, string> = {};
+        result.error.errors.forEach((err) => {
+          if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+        });
+        setErrors(fieldErrors);
+        return;
+      }
+
+      setIsLoading(true);
+      const { error } = await signUp(email, password, firstName, lastName);
+      setIsLoading(false);
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Signup failed",
+          description: error.message,
+        });
+      } else {
+        toast({
+          title: "Signup successful",
+          description: "Please check your email to verify your account.",
+        });
+        setIsLogin(true); // Switch to login view
+      }
     }
   };
 
@@ -123,62 +167,118 @@ export default function Auth() {
 
         <Card>
           <CardHeader className="pb-4">
-            <CardTitle>Sign In</CardTitle>
+            <CardTitle>{isLogin ? "Sign In" : "Create Account"}</CardTitle>
             <CardDescription>
-              Enter your credentials to access your account
+              {isLogin 
+                ? "Enter your credentials to access your account" 
+                : "Enter your details to create a new account"}
             </CardDescription>
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {!isLogin && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      placeholder="John"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      disabled={isLoading}
+                    />
+                    {errors.firstName && (
+                      <p className="text-sm text-destructive">{errors.firstName}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      placeholder="Doe"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      disabled={isLoading}
+                    />
+                    {errors.lastName && (
+                      <p className="text-sm text-destructive">{errors.lastName}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               <div className="space-y-2">
-                <Label htmlFor="login-email">Email</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="login-email"
+                  id="email"
                   type="email"
                   placeholder="you@company.com"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
                 />
                 {errors.email && (
                   <p className="text-sm text-destructive">{errors.email}</p>
                 )}
               </div>
+              
               <div className="space-y-2">
-                <Label htmlFor="login-password">Password</Label>
+                <Label htmlFor="password">Password</Label>
                 <Input
-                  id="login-password"
+                  id="password"
                   type="password"
                   placeholder="••••••••"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
                 />
                 {errors.password && (
                   <p className="text-sm text-destructive">{errors.password}</p>
                 )}
               </div>
+
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Sign In"}
+                {isLoading 
+                  ? (isLogin ? "Signing in..." : "Creating account...") 
+                  : (isLogin ? "Sign In" : "Sign Up")}
               </Button>
-              <div className="text-center">
+
+              <div className="flex flex-col gap-2 text-center">
+                {isLogin && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="text-sm text-muted-foreground px-0"
+                    onClick={() => setForgotPasswordOpen(true)}
+                  >
+                    Forgot your password?
+                  </Button>
+                )}
+                
                 <Button
                   type="button"
                   variant="link"
-                  className="text-sm text-muted-foreground"
-                  onClick={() => setForgotPasswordOpen(true)}
+                  className="text-sm px-0"
+                  onClick={() => {
+                    setIsLogin(!isLogin);
+                    setErrors({});
+                  }}
                 >
-                  Forgot your password?
+                  {isLogin 
+                    ? "Don't have an account? Sign Up" 
+                    : "Already have an account? Sign In"}
                 </Button>
               </div>
             </form>
           </CardContent>
         </Card>
 
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          New employees are created by HR/Admin. Contact your administrator if you need an account.
-        </p>
+        {isLogin && (
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            New employees are created by HR/Admin. Contact your administrator if you need an account.
+          </p>
+        )}
       </div>
 
       {/* Forgot Password Dialog */}

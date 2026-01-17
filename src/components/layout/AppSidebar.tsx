@@ -12,6 +12,8 @@ import {
   UsersRound,
   UserCircle,
   History,
+  DollarSign,
+  Package,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmployee } from "@/hooks/useEmployee";
@@ -41,10 +43,12 @@ const iconMap = {
   UsersRound,
   UserCircle,
   History,
+  DollarSign,
+  Package,
 };
 
 export function AppSidebar() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const location = useLocation();
   const { data: employee } = useEmployee();
   const { data: isReportingManager } = useIsReportingManager();
@@ -57,9 +61,9 @@ export function AppSidebar() {
   // Build navigation with My Profile at the top
   const allNavItems = [
     { label: "Dashboard", path: "/dashboard", icon: "LayoutDashboard" },
-    ...(role !== "admin"
-    ? [{ label: "My Profile", path: `/profile/${employee.id}`, icon: "UserCircle" }]
-    : []),
+    { label: "My Profile", path: `/profile/${employee?.id || user?.id}`, icon: "UserCircle" },
+    { label: "Payroll", path: "/payroll", icon: "DollarSign" },
+    { label: "IMS", path: "/ims", icon: "Package" },
     ...navItems.filter(item => item.path !== "/dashboard"), // exclude dashboard since we added it first
     ...(showMyTeam ? [{ label: "My Team", path: "/my-team", icon: "UsersRound" }] : []),
   ];

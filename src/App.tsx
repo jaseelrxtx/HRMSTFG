@@ -20,6 +20,8 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import MyTeam from "./pages/MyTeam";
 import NotFound from "./pages/NotFound";
+import PayrollDashboard from "./modules/payroll/pages/PayrollDashboard";
+import IMSDashboard from "./modules/ims/pages/IMSDashboard";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +49,10 @@ const App = () => (
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/my-team" element={<MyTeam />} />
+            {/* Modules */}
+            <Route path="/payroll/*" element={<PayrollDashboard />} />
+            <Route path="/ims/*" element={<IMSDashboard />} />
+
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

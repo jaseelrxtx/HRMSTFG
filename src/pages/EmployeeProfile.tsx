@@ -236,54 +236,116 @@ export default function EmployeeProfile() {
       let employeeData;
       let error;
 
-      // if (role === "admin") {
-      //   // 🔹 Admin → profile table
-      //   const result = await supabase
-      //     .from("profiles")
-      //     .select(`
-      //       id,
-      //       first_name,
-      //       last_name,
-      //       email,
-      //       phone,
-      //       avatar_url
-      //     `)
-      //     .eq("id", employeeId)
-      //     .maybeSingle();
+      // Try fetching from employees table first
+      const result = await supabase
+        .from("employees")
+        .select(`
+          *,
+          profiles!employees_user_id_profiles_fkey (
+            first_name,
+            last_name,
+            email,
+            phone,
+            avatar_url
+          ),
+          departments (
+            id,
+            name
+          )
+        `)
+        .eq("id", employeeId)
+        .maybeSingle();
 
-      //   employeeData = result.data;
-      //   error = result.error;
-      //   console.log("employeeData", employeeData);
-      //   console.log("error", error);
-        
+      employeeData = result.data;
+      error = result.error;
 
-      // } else {
-      //   // 🔹 Employee → employees table
-        const result = await supabase
-          .from("employees")
+      // If no employee record found and it might be a direct profile access (like for admin)
+      if (!employeeData && !error) {
+        // Try fetching directly from profiles table
+        // We assume employeeId might be the user_id in this case
+        const profileResult = await supabase
+          .from("profiles")
           .select(`
-            *,
-            profiles!employees_user_id_profiles_fkey (
-              first_name,
-              last_name,
-              email,
-              phone,
-              avatar_url
-            ),
-            departments (
-              id,
-              name
-            )
+            id,
+            first_name,
+            last_name,
+            email,
+            phone,
+            avatar_url
           `)
           .eq("id", employeeId)
           .maybeSingle();
 
-        employeeData = result.data;
-        error = result.error;
-      // }
-
-      if (error) throw error;
-
+        if (profileResult.data) {
+          // Construct a mock employee object from profile data
+          employeeData = {
+            id: profileResult.data.id,
+            user_id: profileResult.data.id,
+            employee_id: "ADMIN", // Placeholder
+            designation: "Administrator",
+            department_id: null,
+            reporting_manager_id: null,
+            employment_type: "full_time",
+            work_mode: "on_site",
+            gender: null,
+            date_of_joining: new Date().toISOString(),
+            probation_end_date: null,
+            work_location: "Main Office",
+            state: null,
+            is_active: true,
+            personal_email: null,
+            linkedin_url: null,
+            blood_group: null,
+            current_address: null,
+            permanent_address: null,
+            emergency_contact_name: null,
+            emergency_contact_number: null,
+            about_me: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            created_by: null,
+            last_modified_by: null,
+            leave_policy_acknowledged_at: null,
+            handbook_acknowledged_at: null,
+            posh_policy_acknowledged_at: null,
+            cpp_acknowledged_at: null,
+            profiles: {
+              first_name: profileResult.data.first_name,
+              last_name: profileResult.data.last_name,
+              email: profileResult.data.email,
+              phone: profileResult.data.phone,
+              avatar_url: profileResult.data.avatar_url
+            },
+            departments: null
+          };
+          error = null;
+        } else {
+           // If failing that, try using user_id lookup in employees table just in case employeeId passed was actually a user_id
+           const employeeByUserId = await supabase
+           .from("employees")
+           .select(`
+             *,
+             profiles!employees_user_id_profiles_fkey (
+               first_name,
+               last_name,
+               email,
+               phone,
+               avatar_url
+             ),
+             departments (
+               id,
+               name
+             )
+           `)
+           .eq("user_id", employeeId)
+           .maybeSingle();
+           
+           if (employeeByUserId.data) {
+             employeeData = employeeByUserId.data;
+             error = employeeByUserId.error;
+           }
+        }
+      }
 
       if (error) {
         console.error("Error fetching employee:", error);

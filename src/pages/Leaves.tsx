@@ -269,7 +269,7 @@ export default function Leaves() {
                           <TableCell className="text-muted-foreground">
                             {format(new Date(app.created_at), "MMM d, yyyy")}
                           </TableCell>
-                          {(app.status === "pending") && (
+                          {((app.status === "pending" || app.status === "approved") && new Date(app.start_date) >= startOfDay(new Date())) && (
                             <TableCell>
                               <Button
                                 variant="outline"
