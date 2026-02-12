@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useEmployee } from "./useEmployee";
+import { useCreateAuditLog } from "./useCreateAuditLog";
 
 export interface LeaveApplication {
   id: string;
@@ -137,7 +138,7 @@ export function usePendingApprovals() {
       let teamMemberIds: string[] = [];
       if (role === "manager") {
         if (!employee) return [];
-        
+
         const { data: teamMembers, error: teamError } = await supabase
           .from("employees")
           .select("id")
@@ -226,6 +227,7 @@ export function useApplyLeave() {
   const queryClient = useQueryClient();
   const { data: employee } = useEmployee();
   const { role } = useAuth();
+  const { mutate: createAuditLog } = useCreateAuditLog();
 
   return useMutation({
     mutationFn: async (data: {
@@ -239,7 +241,7 @@ export function useApplyLeave() {
 
       // All leaves go to reporting manager for approval
       // Managers' own leaves go to HR/Admin
-      const currentApproverRole: "admin" | "hr" | "finance" | "manager" | "team_member" = 
+      const currentApproverRole: "admin" | "hr" | "finance" | "manager" | "team_member" =
         role === "manager" ? "hr" : "manager";
 
       const { data: application, error } = await supabase
@@ -258,6 +260,14 @@ export function useApplyLeave() {
         .single();
 
       if (error) throw error;
+
+      createAuditLog({
+        action: "INSERT",
+        table_name: "leave_applications",
+        record_id: application.id,
+        new_values: application,
+      });
+
       return application;
     },
     onSuccess: () => {
@@ -272,6 +282,7 @@ export function useApproveLeave() {
   const queryClient = useQueryClient();
   const { role } = useAuth();
   const { data: currentUser } = useEmployee();
+  const { mutate: createAuditLog } = useCreateAuditLog();
 
   return useMutation({
     mutationFn: async ({
@@ -333,6 +344,14 @@ export function useApproveLeave() {
 
       if (error) throw error;
 
+      createAuditLog({
+        action: "UPDATE",
+        table_name: "leave_applications",
+        record_id: applicationId,
+        old_values: { status: application.status },
+        new_values: { status: newStatus },
+      });
+
       // 2. Send Email Notification
       if (action === "approve" || action === "reject") {
         const templateName = action === "approve" ? "Leave Approval" : "Leave Rejection";
@@ -364,9 +383,28 @@ export function useApproveLeave() {
           if (!res.ok) {
             const errorData = await res.json();
             console.error("Email failed:", errorData);
+            createAuditLog({
+              action: "EMAIL_FAILED",
+              table_name: "system_emails",
+              record_id: applicationId,
+              new_values: { error: errorData, to: application.employees?.profiles?.email, template: templateName },
+            });
+          } else {
+            createAuditLog({
+              action: "EMAIL_SENT",
+              table_name: "system_emails",
+              record_id: applicationId,
+              new_values: { to: application.employees?.profiles?.email, template: templateName },
+            });
           }
         } catch (err) {
           console.error("Failed to send email:", err);
+          createAuditLog({
+            action: "EMAIL_FAILED",
+            table_name: "system_emails",
+            record_id: applicationId,
+            new_values: { error: err, to: application.employees?.profiles?.email, template: templateName },
+          });
         }
       }
     },

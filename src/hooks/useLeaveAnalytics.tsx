@@ -171,3 +171,184 @@ export function useLeaveAnalytics() {
     },
   });
 }
+
+export interface EmployeeLeaveStats {
+  employeeId: string;
+  employeeName: string;
+  departmentName: string;
+  totalEntitled: number;
+  totalUsed: number;
+  totalBalance: number;
+  pendingRequests: number;
+  dateOfJoining: string;
+  totalWorkingDays: number;
+  leaveTaken: number;
+  attendancePercentage: number;
+}
+
+export function useAllEmployeeLeaveStats() {
+  const currentYear = new Date().getFullYear();
+
+  return useQuery({
+    queryKey: ["all-employee-leave-stats", currentYear],
+    queryFn: async (): Promise<EmployeeLeaveStats[]> => {
+      // 1. Fetch all active employees
+      const { data: employees, error: empError } = await supabase
+        .from("employees")
+        .select(`
+          id,
+          date_of_joining,
+          profiles!employees_user_id_profiles_fkey (
+            first_name,
+            last_name
+          ),
+          departments (
+            name
+          )
+        `)
+        .eq("is_active", true);
+
+      if (empError) throw empError;
+
+      // 2. Fetch leave balances for all employees for the current year
+      const { data: balances, error: balError } = await supabase
+        .from("leave_balances")
+        .select(`
+          employee_id,
+          entitled_days,
+          used_days,
+          carried_forward_days,
+          adjusted_days
+        `)
+        .eq("year", currentYear);
+
+      if (balError) throw balError;
+
+      // 3. Fetch pending leave applications
+      const { data: pendingApps, error: appError } = await supabase
+        .from("leave_applications")
+        .select("employee_id")
+        .eq("status", "pending");
+
+      if (appError) throw appError;
+
+      // Helper function to calculate working days
+      const calculateWorkingDays = (startDate: Date, endDate: Date): number => {
+        let count = 0;
+        const curDate = new Date(startDate);
+        while (curDate <= endDate) {
+          const dayOfWeek = curDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+          const date = curDate.getDate();
+
+          // Sunday is always off
+          if (dayOfWeek === 0) {
+            curDate.setDate(curDate.getDate() + 1);
+            continue;
+          }
+
+          // Saturday check
+          if (dayOfWeek === 6) {
+            // Check if 2nd or 4th Saturday
+            // To find if it's Nth saturday, we can check date ranges?
+            // Or simpler: count saturdays in the month?
+            // Actually, "2nd Saturday" means it is between 8th and 14th
+            // "4th Saturday" means it is between 22nd and 28th
+            // Let's verify:
+            // 1st Sat: 1-7
+            // 2nd Sat: 8-14
+            // 3rd Sat: 15-21
+            // 4th Sat: 22-28
+            // 5th Sat: 29-31
+
+            if ((date >= 8 && date <= 14) || (date >= 22 && date <= 28)) {
+              // It is 2nd or 4th Saturday - Leave
+              curDate.setDate(curDate.getDate() + 1);
+              continue;
+            }
+          }
+
+          // Otherwise, it's a working day (Mon-Fri, or 1st/3rd/5th Sat)
+          count++;
+          curDate.setDate(curDate.getDate() + 1);
+        }
+        return count;
+      };
+
+      const yearStart = new Date(currentYear, 0, 1);
+      const today = new Date(); // Use today as end date for calculation context
+      // If today is in next year (unlikely given hook logic, but safe guard), cap at end of year
+      const yearEnd = new Date(currentYear, 11, 31);
+      const calculationEndDate = today > yearEnd ? yearEnd : today;
+
+      // 4. Aggregate data
+      const statsMap = new Map<string, EmployeeLeaveStats>();
+
+      // Initialize with employee data
+      employees?.forEach((emp) => {
+        const profile = emp.profiles as { first_name: string; last_name: string } | null;
+        const department = emp.departments as { name: string } | null;
+
+        // Determine start date for working days calculation
+        // Max(Start of Year, Date of Joining)
+        const joinDate = new Date(emp.date_of_joining);
+        const effectiveStartDate = joinDate > yearStart ? joinDate : yearStart;
+
+        // If effective start date is after calculation end date (joined in future?), 0 working days
+        const workingDays = effectiveStartDate > calculationEndDate
+          ? 0
+          : calculateWorkingDays(effectiveStartDate, calculationEndDate);
+
+        statsMap.set(emp.id, {
+          employeeId: emp.id,
+          employeeName: profile ? `${profile.first_name} ${profile.last_name}` : "Unknown",
+          departmentName: department?.name || "Unassigned",
+          totalEntitled: 0,
+          totalUsed: 0,
+          totalBalance: 0,
+          pendingRequests: 0,
+          dateOfJoining: emp.date_of_joining,
+          totalWorkingDays: workingDays,
+          leaveTaken: 0, // Will be updated from balances
+          attendancePercentage: 0, // Will be calculated after balance update
+        });
+      });
+
+      // Add balance data
+      balances?.forEach((bal) => {
+        const stats = statsMap.get(bal.employee_id);
+        if (stats) {
+          const entitled = Number(bal.entitled_days) + Number(bal.carried_forward_days) + Number(bal.adjusted_days);
+          const used = Number(bal.used_days);
+
+          stats.totalEntitled += entitled;
+          stats.totalUsed += used;
+          stats.totalBalance += (entitled - used);
+          stats.leaveTaken += used;
+        }
+      });
+
+      // Add pending request counts
+      pendingApps?.forEach((app) => {
+        const stats = statsMap.get(app.employee_id);
+        if (stats) {
+          stats.pendingRequests += 1;
+        }
+      });
+
+      // Final pass to calculate percentage
+      statsMap.forEach((stat) => {
+        if (stat.totalWorkingDays > 0) {
+          const presentDays = stat.totalWorkingDays - stat.leaveTaken;
+          stat.attendancePercentage = (presentDays / stat.totalWorkingDays) * 100;
+        } else {
+          stat.attendancePercentage = 0; // Or 100? If 0 working days, 0% seems safer or N/A
+          // If they just joined today, working days might be 1.
+          if (stat.totalWorkingDays === 0) stat.attendancePercentage = 100; // Edge case: joined today, 0 working days passed? No, loop includes start date. 
+          // If joined tomorrow, working days = 0.
+        }
+      });
+
+      return Array.from(statsMap.values());
+    },
+  });
+}

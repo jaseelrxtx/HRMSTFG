@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useCreateAuditLog } from "@/hooks/useCreateAuditLog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +34,7 @@ interface EditEmployeeDialogProps {
 export function EditEmployeeDialog({ open, onOpenChange, employee }: EditEmployeeDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { mutate: createAuditLog } = useCreateAuditLog();
 
   const { data: departments } = useQuery({
     queryKey: ["departments"],
@@ -136,10 +138,58 @@ export function EditEmployeeDialog({ open, onOpenChange, employee }: EditEmploye
         .eq("id", employee.id);
 
       if (employeeError) throw employeeError;
+
+      // Calculate changed fields for audit log
+      const changes: Record<string, any> = {};
+      const oldValues: Record<string, any> = {};
+
+      // Profile changes
+      if (formData.first_name !== employee.profiles?.first_name) {
+        changes.first_name = formData.first_name;
+        oldValues.first_name = employee.profiles?.first_name;
+      }
+      if (formData.last_name !== employee.profiles?.last_name) {
+        changes.last_name = formData.last_name;
+        oldValues.last_name = employee.profiles?.last_name;
+      }
+      if (formData.phone !== (employee.profiles?.phone || "")) {
+        changes.phone = formData.phone;
+        oldValues.phone = employee.profiles?.phone;
+      }
+
+      // Employee changes
+      const empFields = [
+        "designation", "department_id", "work_location", "work_mode", "state",
+        "personal_email", "linkedin_url", "blood_group", "gender", "employment_type",
+        "date_of_joining", "probation_end_date", "current_address", "permanent_address",
+        "emergency_contact_name", "emergency_contact_number", "about_me"
+      ] as const;
+
+      empFields.forEach(field => {
+        // Handle null vs empty string for comparison
+        const oldVal = employee[field] || "";
+        const newVal = formData[field] || "";
+        // Simple comparison, might need refinement for specific types if strict equality fails
+        if (oldVal != newVal) {
+          changes[field] = formData[field];
+          oldValues[field] = employee[field];
+        }
+      });
+
+      if (Object.keys(changes).length > 0) {
+        createAuditLog({
+          action: "UPDATE",
+          table_name: "employees",
+          record_id: employee.id,
+          old_values: oldValues,
+          new_values: changes,
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       queryClient.invalidateQueries({ queryKey: ["employee"] });
+      queryClient.invalidateQueries({ queryKey: ["audit-logs"] });
       toast({ title: "Employee updated successfully" });
       onOpenChange(false);
     },

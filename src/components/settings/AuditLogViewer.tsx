@@ -22,6 +22,8 @@ const ACTION_COLORS: Record<string, string> = {
   INSERT: "bg-green-500/10 text-green-700 dark:text-green-400",
   UPDATE: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
   DELETE: "bg-red-500/10 text-red-700 dark:text-red-400",
+  EMAIL_SENT: "bg-purple-500/10 text-purple-700 dark:text-purple-400",
+  EMAIL_FAILED: "bg-red-500/10 text-red-700 dark:text-red-400",
 };
 
 export function AuditLogViewer() {
@@ -41,6 +43,13 @@ export function AuditLogViewer() {
     return name
       .replace(/_/g, " ")
       .replace(/\b\w/g, (l) => l.toUpperCase());
+  };
+
+  const formatValue = (value: any) => {
+    if (typeof value === "object" && value !== null) {
+      return JSON.stringify(value, null, 2);
+    }
+    return String(value);
   };
 
   return (
@@ -155,7 +164,7 @@ export function AuditLogViewer() {
                                 <p className="text-sm font-medium mb-1">Previous Values</p>
                                 <ScrollArea className="h-32 rounded-md border p-2">
                                   <pre className="text-xs">
-                                    {JSON.stringify(log.old_values, null, 2)}
+                                    {formatValue(log.old_values)}
                                   </pre>
                                 </ScrollArea>
                               </div>
@@ -165,7 +174,7 @@ export function AuditLogViewer() {
                                 <p className="text-sm font-medium mb-1">New Values</p>
                                 <ScrollArea className="h-32 rounded-md border p-2">
                                   <pre className="text-xs">
-                                    {JSON.stringify(log.new_values, null, 2)}
+                                    {formatValue(log.new_values)}
                                   </pre>
                                 </ScrollArea>
                               </div>

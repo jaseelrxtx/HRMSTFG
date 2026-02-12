@@ -12,6 +12,7 @@ import LeaveCalendar from "./pages/LeaveCalendar";
 import LeaveHistory from "./pages/LeaveHistory";
 import Approvals from "./pages/Approvals";
 import Employees from "./pages/Employees";
+import LeaveStatistics from "./pages/LeaveStatistics";
 import EmployeeProfile from "./pages/EmployeeProfile";
 import LeavePolicies from "./pages/LeavePolicies";
 import Holidays from "./pages/Holidays";
@@ -39,6 +40,7 @@ const App = () => (
             {/* <Route path="/leave-management" element={<LeaveCalendar />} /> */}
             <Route path="/leave-management" element={<LeaveHistory />} />
             <Route path="/approvals" element={<Approvals />} />
+            <Route path="/leave-statistics" element={<LeaveStatistics />} />
             <Route path="/employees" element={<Employees />} />
             <Route path="/profile/:employeeId" element={<EmployeeProfile />} />
             <Route path="/policies" element={<LeavePolicies />} />

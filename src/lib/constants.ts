@@ -120,6 +120,10 @@ export const getNavigationItems = (role: AppRole) => {
     items.push({ label: "Leave Management", path: "/leave-management", icon: "CalendarDays" });
   }
 
+  if (["admin", "hr"].includes(role)) {
+    items.push({ label: "Leave Statistics", path: "/leave-statistics", icon: "BarChart3" });
+  }
+
   // Holidays - available to all roles (read-only for non-admin/HR)
   items.push({ label: "Holidays", path: "/holidays", icon: "CalendarPlus" });
 
