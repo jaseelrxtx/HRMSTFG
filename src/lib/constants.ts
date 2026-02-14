@@ -139,6 +139,9 @@ export const getNavigationItems = (role: AppRole) => {
     );
   }
 
+  // Projects - available to all roles
+  items.push({ label: "Projects", path: "/projects", icon: "KanbanSquare" });
+
   if (role === "admin") {
     items.push({ label: "Settings", path: "/settings", icon: "Settings" });
   }

@@ -1,0 +1,72 @@
+# System Features Documentation
+
+## 1. Authentication & User Management
+-   **Login/Logout**: Secure authentication using Supabase.
+-   **Role-Based Access Control (RBAC)**: Supports multiple roles (Admin, HR, Manager, Employee) with specific permissions.
+-   **Profile Management**:
+    -   View personal details (Personal, Employment, Address, Emergency Contact).
+    -   Edit profile information (subject to role permissions).
+    -   Change password.
+    -   Profile photo upload.
+
+## 2. Dashboard
+-   **Role-Specific Dashboards**: tailored views for Admin, HR, Manager, and Employee.
+-   **Key Metrics**:
+    -   Leave balances (Entitled, Used, Available).
+    -   Pending leave requests (for approvers).
+    -   Team availability/status.
+    -   Organization-wide announcements.
+-   **Quick Actions**: Apply for leave, view team, etc.
+
+## 3. Leave Management
+-   **Apply for Leave**:
+    -   Select leave type (Sick, Casual, Earned, etc.).
+    -   Specify date range and reason.
+    -   File attachment support.
+-   **Leave Approval Workflow**:
+    -   Managers approve/reject team members' leaves.
+    -   HR/Admin can oversee all leave requests.
+    -   Email notifications on status changes.
+-   **Leave History**: View past leave applications and their status.
+-   **Leave Balances**: Real-time tracking of checking specific leave type balances.
+-   **Leave Cancellation**: Employees can cancel pending leave requests.
+-   **Leave Statistics Dashboard** (Admin/HR):
+    -   Comprehensive view of all employee leave data.
+    -   Search and filter by department.
+    -   **Metrics**: Total Working Days, Leave Taken, Attendance Percentage.
+    -   CSV Export.
+
+## 4. Employee Management (Admin/HR)
+-   **Employee Directory**: List of all employees with search and filter.
+-   **Add/Edit Employee**: comprehensive form for onboarding and updating employee details.
+-   **Role Management**: Assign/update user roles.
+-   **Department Management**: Create and manage organizational departments.
+-   **Reporting Manager Assignment**: Set up hierarchy for leave approvals.
+
+## 5. Holidays & Calendar
+-   **Holiday Calendar**: View upcoming national and regional holidays.
+-   **Holiday Management** (Admin/HR): Add, edit, or delete holidays.
+-   **Leave Calendar**: Visual representation of team leaves.
+
+## 6. Settings & Configuration (Admin/HR)
+-   **Leave Policies**: Configure leave types, accrual rules, and carry-forward limits.
+-   **Announcement Banners**: Create and manage system-wide announcements.
+-   **Email Settings**: Configure SMTP details for email notifications.
+-   **Email Templates**: Customize templates for various notification types.
+-   **Notification Preferences**: Users can manage their notification settings.
+-   **Audit Logs**:
+    -   Track critical actions (Leave Ops, Profile Updates, Email Status).
+    -   Filter logs by action, table, or user.
+    -   View detailed changes (old value vs. new value).
+
+## 7. Reports & Analytics
+-   **Leave Analytics**: Visual charts for leave trends, department-wise usage, and leave type distribution.
+-   **Team Reports**: Managers can view leave statistics for their direct reports.
+
+## 8. Notifications
+-   **In-App Notifications**: Alerts for leave status changes, approvals pending, etc.
+-   **Email Notifications**: Automated emails for leave applications, approvals, rejections, and system alerts.
+
+## 9. Security & Compliance
+-   **Secure Data Access**: Row Level Security (RLS) ensures users access only allowed data.
+-   **Audit Trail**: Comprehensive logging for accountability.

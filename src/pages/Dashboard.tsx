@@ -60,13 +60,13 @@ export default function Dashboard() {
   const { role } = useAuth();
   const { data: employee, isLoading: employeeLoading } = useEmployee();
   const { data: banners } = useActiveAnnouncementBanners();
-  
+
   const isAdminOrHR = role === "admin" || role === "hr";
-  
+
   // Personal stats (for non-admin/HR users)
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: recentRequests, isLoading: requestsLoading } = useRecentLeaveRequests(5);
-  
+
   // Organization-wide stats (for admin/HR users)
   const { data: orgStats, isLoading: orgStatsLoading } = useOrganizationStats();
   const { data: allRecentRequests, isLoading: allRequestsLoading } = useAllRecentLeaveRequests(10);
@@ -96,7 +96,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold">Welcome back, {displayName}!</h1>
           <p className="text-muted-foreground">
-            {isAdminOrHR 
+            {isAdminOrHR
               ? "Here's an overview of your organization's leave status."
               : "Here's an overview of your leave status and pending actions."
             }
@@ -131,7 +131,7 @@ export default function Dashboard() {
                     >
                       {/* Subtle Decorative "Glass" Overlay */}
                       <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px]" />
-                      
+
                       {/* Animated Light Sweep Effect */}
                       <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-[shimmer_3s_infinite]" />
 
@@ -168,13 +168,15 @@ export default function Dashboard() {
           </div>
         )}
 
-        
+
 
 
         {/* Quick Stats - Different for Admin/HR vs regular users */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {isStatsLoading ? (
             <>
+              <StatCardSkeleton />
+              <StatCardSkeleton />
               <StatCardSkeleton />
               <StatCardSkeleton />
               <StatCardSkeleton />
@@ -236,6 +238,28 @@ export default function Dashboard() {
                 <CardContent>
                   <div className="text-2xl font-bold">{stats?.totalAvailable ?? 0}</div>
                   <p className="text-xs text-muted-foreground">Days available</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Attendance</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.attendancePercentage ?? 100}%</div>
+                  <p className="text-xs text-muted-foreground">Attendance rate</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Working Days</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.totalWorkingDays ?? 0}</div>
+                  <p className="text-xs text-muted-foreground">Total working days</p>
                 </CardContent>
               </Card>
 

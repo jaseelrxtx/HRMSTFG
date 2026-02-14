@@ -31,6 +31,23 @@ export interface PendingApproval {
   created_at: string;
 }
 
+// Helper to check if a date is a weekend (Saturday or Sunday)
+function isWeekend(date: Date): boolean {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
+// Helper to check if a date is a holiday
+function isHoliday(date: Date, holidays: any[], employeeState: string | null): boolean {
+  const dateString = date.toISOString().split('T')[0];
+  return holidays.some(h => {
+    if (h.date !== dateString) return false;
+    if (h.is_national) return true;
+    // If it's a regional holiday, check if it applies to the employee's state
+    return employeeState && h.states && h.states.includes(employeeState);
+  });
+}
+
 export function useDashboardStats() {
   const { data: employee } = useEmployee();
   const currentYear = new Date().getFullYear();
@@ -55,6 +72,14 @@ export function useDashboardStats() {
         .eq("year", currentYear);
 
       if (balancesError) throw balancesError;
+
+      // Fetch holidays for the current year
+      const { data: holidays, error: holidaysError } = await supabase
+        .from("holidays")
+        .select("*")
+        .eq("year", currentYear);
+
+      if (holidaysError) console.error("Error fetching holidays:", holidaysError);
 
       // Calculate totals from balances
       const totalAvailable = balances?.reduce((sum, b) => {
@@ -96,12 +121,53 @@ export function useDashboardStats() {
         total: Number(b.entitled_days) + Number(b.carried_forward_days) + Number(b.adjusted_days),
       }));
 
+      // Calculate Working Days
+      const today = new Date();
+      // Start form Jan 1st of current year OR joining date, whichever is later
+      const startOfYear = new Date(currentYear, 0, 1);
+      const joiningDate = new Date(employee.date_of_joining);
+
+      let startDate = startOfYear;
+      if (joiningDate > startOfYear) {
+        startDate = joiningDate;
+      }
+
+      let totalWorkingDays = 0;
+
+      // Clone date to avoid modifying original
+      const currentDate = new Date(startDate);
+      // Reset time to 00:00:00 to avoid time comparison issues
+      currentDate.setHours(0, 0, 0, 0);
+      const targetDate = new Date(today);
+      targetDate.setHours(0, 0, 0, 0);
+
+      while (currentDate <= targetDate) {
+        // Skip current date if it's weekend or holiday
+        // Note: We are iterating day by day.
+        if (!isWeekend(currentDate) && !isHoliday(currentDate, holidays || [], employee.state)) {
+          totalWorkingDays++;
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      // Calculate Attendance %
+      // Days Present = Working Days - (Leaves Taken + LOP)
+      const totalAbsences = totalUsed + totalLopDays;
+      const daysPresent = Math.max(0, totalWorkingDays - totalAbsences);
+
+      const attendancePercentage = totalWorkingDays > 0
+        ? Math.round((daysPresent / totalWorkingDays) * 100)
+        : 100;
+
       return {
         totalAvailable: Math.round(totalAvailable),
         pendingRequests: pendingCount || 0,
         usedThisYear: Math.round(totalUsed),
         lopDays: Math.round(totalLopDays),
         leaveBalances,
+        totalWorkingDays,
+        attendancePercentage,
+        totalLeavesTaken: totalAbsences
       };
     },
     enabled: !!employee,
@@ -196,17 +262,17 @@ export function useDashboardPendingApprovals(limit: number = 5) {
         .order("created_at", { ascending: true })
         .limit(limit);
 
-      console.log("hr or admin test",role);
+      console.log("hr or admin test", role);
 
       // Filter based on role
       if (role === "manager") {
-         if (!employee) return []; // Explicitly handle missing employee for manager
-         
+        if (!employee) return []; // Explicitly handle missing employee for manager
+
         // For managers, only show leave requests from their direct reports
         query = query.in("employee_id", teamMemberIds);
       } else if (role === "hr") {
         query = query.in("current_approver_role", ["manager"]);
-      }else if (role === "admin") {
+      } else if (role === "admin") {
         query = query.in("current_approver_role", ["hr", "manager"]);
       }
 
@@ -229,10 +295,10 @@ export function useDashboardPendingApprovals(limit: number = 5) {
         const employees = app.employees as { user_id: string | null } | null;
         const leaveTypes = app.leave_types as { name: string } | null;
         const profile = employees?.user_id ? profileMap.get(employees.user_id) : null;
-        
+
         return {
           id: app.id,
-          employee_name: profile 
+          employee_name: profile
             ? `${profile.first_name} ${profile.last_name}`
             : "Unknown",
           leave_type: leaveTypes?.name || "Unknown",

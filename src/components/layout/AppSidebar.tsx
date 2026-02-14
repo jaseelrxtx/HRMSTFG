@@ -12,6 +12,7 @@ import {
   UsersRound,
   UserCircle,
   History,
+  KanbanSquare,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEmployee } from "@/hooks/useEmployee";
@@ -41,6 +42,7 @@ const iconMap = {
   UsersRound,
   UserCircle,
   History,
+  KanbanSquare,
 };
 
 export function AppSidebar() {
@@ -53,13 +55,13 @@ export function AppSidebar() {
 
   // Add "My Team" link for reporting managers (non-admin/HR)
   const showMyTeam = isReportingManager && role && !["admin", "hr"].includes(role);
-  
+
   // Build navigation with My Profile at the top
   const allNavItems = [
     { label: "Dashboard", path: "/dashboard", icon: "LayoutDashboard" },
     ...(role !== "admin"
-    ? [{ label: "My Profile", path: `/profile/${employee.id}`, icon: "UserCircle" }]
-    : []),
+      ? [{ label: "My Profile", path: `/profile/${employee.id}`, icon: "UserCircle" }]
+      : []),
     ...navItems.filter(item => item.path !== "/dashboard"), // exclude dashboard since we added it first
     ...(showMyTeam ? [{ label: "My Team", path: "/my-team", icon: "UsersRound" }] : []),
   ];
@@ -80,7 +82,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {allNavItems.map((item) => {
                 const Icon = iconMap[item.icon as keyof typeof iconMap];
-                const isActive = location.pathname === item.path || 
+                const isActive = location.pathname === item.path ||
                   (item.path.startsWith('/profile/') && location.pathname.startsWith('/profile/'));
 
                 return (
